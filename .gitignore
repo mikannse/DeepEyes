@@ -1,0 +1,49 @@
+# 前端 React 相关忽略项
+frontend/node_modules/
+frontend/.env*
+frontend/build/
+frontend/.eslintcache
+frontend/coverage/
+frontend/.npm
+frontend/.cache/
+frontend/dist/
+frontend/package-lock.json
+frontend/yarn.lock
+frontend/*.log
+
+# 后端 Python 相关忽略项
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.venv/
+backend/env/
+backend/venv/
+backend/ENV/
+backend/env.bak/
+backend/instance/
+backend/.python-version
+backend/.env
+backend/.env.local
+backend/uploads/  # 假设这是文件上传目录
+backend/*.pdf     # 生成的报告文件
+
+# 通用忽略项
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.swo
+.idea/
+.vscode/
+*.iml
+*.bak
+*.tmp
+*.temp
+
+# 系统文件忽略
+ehthumbs.db
+Desktop.ini
+
+# 测试相关
+/test-reports/
+/coverage/

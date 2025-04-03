@@ -1,0 +1,21 @@
+/* frontend/src/App.css */
+.container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 20px;
+}
+
+.analyze-button {
+  margin-top: 1rem;
+  padding: 10px 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.download-link {
+  display: block;
+  margin-top: 1rem;
+  color: #28a745;
+}
