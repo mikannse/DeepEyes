@@ -1,27 +1,28 @@
-<!-- backend/templates/report.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>安全分析报告</title>
-  <style>
-    body { font-family: Arial, sans-serif; }
-    .vuln-item { margin-bottom: 20px; border-left: 3px solid #007bff; padding-left: 10px; }
-    .severity-high { border-color: #dc3545; }
-    .severity-medium { border-color: #ffc107; }
-  </style>
+    <meta charset="utf-8">
+    <title>安全审计报告</title>
+    <style>
+        .vulnerability { margin-bottom: 20px; padding: 10px; border-left: 3px solid #007bff; }
+        .severity-high { border-color: #dc3545; }
+        .severity-medium { border-color: #ffc107; }
+        .filename { color: #6c757d; font-size: 0.9em; }
+    </style>
 </head>
 <body>
-  <h1>代码安全分析报告</h1>
-  <p>共发现 {{ vulnerabilities|length }} 个潜在问题</p>
-  
-  {% for vuln in vulnerabilities %}
-  <div class="vuln-item severity-{{ vuln.severity }}">
-    <h3>{{ vuln.filename }} - {{ vuln.type }}</h3>
-    <p>位置: 第 {{ vuln.line }} 行</p>
-    <p>描述: {{ vuln.description }}</p>
-    <p>修复建议: {{ vuln.fix }}</p>
-  </div>
-  {% endfor %}
+    <h1>代码安全审计报告</h1>
+    <p>共发现 {{ vulnerabilities|length }} 个安全问题</p>
+    
+    {% for vuln in vulnerabilities %}
+    <div class="vulnerability severity-{{ vuln.severity }}">
+        <div class="filename">{{ vuln.filename }}:{{ vuln.line }}</div>
+        <h3>{{ vuln.type }} ({{ vuln.severity|upper }})</h3>
+        <p>{{ vuln.description }}</p>
+        <div class="suggestion">
+            <strong>修复建议：</strong>{{ vuln.suggestion }}
+        </div>
+    </div>
+    {% endfor %}
 </body>
 </html>
