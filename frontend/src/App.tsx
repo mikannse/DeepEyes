@@ -1,60 +1,71 @@
 import { useState } from 'react';
-import { Dashboard } from '@uppy/react';
-import Uppy from '@uppy/core';
-import XHRUpload from '@uppy/xhr-upload';
 import './App.css';
 
 function App() {
-  const [reportUrl, setReportUrl] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [uploadComplete, setUploadComplete] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [files, setFiles] = useState<File[]>([]); // 存储用户选择的文件
+  const [isUploaded, setIsUploaded] = useState(false); // 是否已上传文件
+  const [isAnalyzing, setIsAnalyzing] = useState(false); // 是否正在分析
+  const [reportUrl, setReportUrl] = useState<string | null>(null); // 报告下载链接
 
-  const uppy = new Uppy({
-    restrictions: {
-      allowedFileTypes: ['.py', '.js', '.java', '.c', '.cpp', '.go', '.php']
+  // 处理文件上传
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      const filesArray = Array.from(selectedFiles);
+      setFiles(filesArray);
+      setIsUploaded(true); // 上传完成后点亮“开始分析”按钮
     }
-  }).use(XHRUpload, {
-    endpoint: 'http://localhost:5000/upload',
-    fieldName: 'codeFiles',
-  }).on('upload', () => {
-    setUploadProgress(0);
-  }).on('upload-progress', (file, progress) => {
-    if (progress.percentage !== undefined) {
-      setUploadProgress(Math.round(progress.percentage));
-    }
-  }).on('complete', (result) => {
-    console.log('上传完成结果:', result);  // 添加日志
-    if (result.successful && result.successful.length > 0) {
-      setUploadProgress(null);
-      setUploadComplete(true);
-      handleAnalyze();  // 自动触发分析
-    } else {
-      alert("文件上传失败");
-    }
-  });
+  };
 
-  const handleAnalyze = async () => {
-    setIsAnalyzing(true);
+  // 调用 /upload 接口上传文件
+  const uploadFiles = async () => {
+    if (files.length === 0) {
+      alert("请先选择文件");
+      return;
+    }
+
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('codeFiles', file);
+    });
+
     try {
-      const formData = new FormData();
-      uppy.getFiles().forEach(file => {
-        formData.append('codeFiles', file.data);
-      });
-  
-      const response = await fetch('http://localhost:5000/analyze', {
+      const response = await fetch('http://localhost:5000/upload', {
         method: 'POST',
         body: formData,
       });
-  
+
+      if (!response.ok) {
+        throw new Error('文件上传失败');
+      }
+
+      const result = await response.json();
+      console.log('文件上传成功:', result);
+      alert("文件上传成功！");
+    } catch (error) {
+      console.error('文件上传失败:', error);
+      alert("文件上传失败，请重试");
+    }
+  };
+
+  // 调用 /analyze 接口进行分析
+  const startAnalysis = async () => {
+    setIsAnalyzing(true);
+
+    try {
+      const response = await fetch('http://localhost:5000/analyze', {
+        method: 'POST',
+      });
+
       if (!response.ok) {
         throw new Error('分析请求失败');
       }
-  
-      const { reportPath } = await response.json();
-      console.log('报告路径:', reportPath);  // 添加日志
-      setReportUrl(`http://localhost:5000/${reportPath}`);
+
+      const { report_path } = await response.json();
+      console.log('报告路径:', report_path);
+      setReportUrl(`http://localhost:5000${report_path}`); // 设置报告下载链接
     } catch (error) {
+      console.error('分析失败:', error);
       alert("分析失败，请检查后端服务");
     } finally {
       setIsAnalyzing(false);
@@ -64,24 +75,38 @@ function App() {
   return (
     <div className="container">
       <h1>代码安全分析器</h1>
-      {uploadProgress !== null && (
-        <div>上传进度: {uploadProgress}%</div>
-      )}
-      <Dashboard uppy={uppy} />
-      {uploadComplete && (
-        <button 
-          onClick={handleAnalyze} 
-          disabled={isAnalyzing}
-          className="analyze-button"
+
+      {/* 文件上传 */}
+      <div>
+        <input
+          type="file"
+          multiple
+          onChange={handleFileUpload}
+          accept=".py,.js,.java,.c,.cpp,.go,.php"
+        />
+        <button onClick={uploadFiles} disabled={files.length === 0}>
+          上传
+        </button>
+      </div>
+
+      {/* 开始分析 */}
+      <div>
+        <button
+          onClick={startAnalysis}
+          disabled={!isUploaded || isAnalyzing} // 只有上传完成后才能点击
         >
           {isAnalyzing ? '分析中...' : '开始分析'}
         </button>
-      )}
+      </div>
+
+      {/* 下载报告 */}
       {reportUrl && (
-  <a href={reportUrl} download="安全报告.pdf" className="download-link">
-    ↓ 下载 PDF 报告
-  </a>
-)}
+        <div>
+          <a href={reportUrl} download="安全报告.pdf" className="download-link">
+            ↓ 下载 PDF 报告
+          </a>
+        </div>
+      )}
     </div>
   );
 }
