@@ -45,11 +45,11 @@ PDF_OPTIONS = {
 def build_analysis_prompt(filename: str, code: str) -> dict:
     """构建硅基流动 API 请求提示词"""
     return {
-        "model": "Qwen/Qwen2.5-32B-Instruct",
+        "model": "deepseek-ai/DeepSeek-R1",
         "messages": [
             {
                 "role": "user",
-                "content": f"""请以专业安全工程师身份分析以下代码，严格按JSON格式返回：
+                "content": f"""请以专业安全工程师身份分析以下代码，输出中文报告，严格按JSON格式返回：
 {{
   "vulnerabilities": [
     {{
@@ -153,13 +153,17 @@ def analyze_code():
                 logger.debug(f"API状态码: {response.status_code}")  # 新增
                 logger.debug(f"API原始响应: {json.dumps(result, ensure_ascii=False)}")
 
-                content = result['choices'][0]['message']['content']
+                content = result['choices'][0]['message'].get('reasoning_content', '')
+                if not content:
+                    logger.error("API 返回的 reasoning_content 字段为空")
+                    continue
                 analysis_data = json.loads(content)
                 logger.debug(f"解析后的漏洞数据: {analysis_data}")  # 新增
-                
+
+                vulnerabilities_list = analysis_data.get('vulnerabilities', [])
                 vulnerabilities.extend([
                     {**vuln, "filename": filename} 
-                    for vuln in analysis_data.get('vulnerabilities', [])
+                    for vuln in vulnerabilities_list
                 ])
 
             except (json.JSONDecodeError, KeyError) as e:

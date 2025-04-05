@@ -8,12 +8,13 @@ function App() {
   const [reportUrl, setReportUrl] = useState<string | null>(null); // 报告下载链接
 
   // 处理文件上传
+// 处理文件上传
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
       const filesArray = Array.from(selectedFiles);
       setFiles(filesArray);
-      setIsUploaded(true); // 上传完成后点亮“开始分析”按钮
+      setIsUploaded(false); // 重置上传状态
     }
   };
 
@@ -42,9 +43,11 @@ function App() {
       const result = await response.json();
       console.log('文件上传成功:', result);
       alert("文件上传成功！");
+      setIsUploaded(true); // 仅在上传成功后点亮“开始分析”按钮
     } catch (error) {
       console.error('文件上传失败:', error);
       alert("文件上传失败，请重试");
+      setIsUploaded(false); // 确保上传失败时不点亮按钮
     }
   };
 
