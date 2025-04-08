@@ -45,9 +45,12 @@ DeepEyes 是一个基于 AI 的代码安全分析工具，旨在帮助开发者�
 ```bash
 cd backend
 python app.py
+```
 
-#### 前端启动
+### 前端启动
 
-``` bash
+```bash
 cd fronted
 npm start
+```
+
