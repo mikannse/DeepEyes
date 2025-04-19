@@ -1,28 +1,181 @@
-.container {
+/* 基础样式 */
+body {
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #f5f5f5;
+}
+
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.app-header {
   text-align: center;
-  margin-top: 50px;
+  padding: 1rem 0;
+  background: #2c3e50;
+  color: white;
+  border-radius: 8px;
+  margin-bottom: 2rem;
 }
 
-input[type="file"] {
-  margin-bottom: 20px;
+.content-container {
+  display: grid;
+  gap: 2rem;
 }
 
-button {
-  padding: 10px 20px;
-  margin: 10px;
-  font-size: 16px;
+/* 文件上传区域 */
+.upload-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.file-input-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.upload-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-button:disabled {
-  background-color: #ccc;
+.upload-button:hover {
+  background: #2980b9;
+}
+
+.upload-icon {
+  width: 24px;
+  height: 24px;
+  fill: white;
+  margin-right: 8px;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.primary-button {
+  padding: 12px 24px;
+  background: #2ecc71;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+}
+
+.primary-button.disabled {
+  background: #bdc3c7;
   cursor: not-allowed;
 }
 
-.download-link {
-  display: inline-block;
-  margin-top: 20px;
-  color: blue;
-  text-decoration: underline;
+/* 文件列表 */
+.file-list-section {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-button {
+  background: transparent;
+  border: none;
   cursor: pointer;
+  padding: 4px;
+}
+
+.delete-button svg {
+  fill: #e74c3c;
+  width: 20px;
+  height: 20px;
+}
+
+.delete-button:hover svg {
+  fill: #c0392b;
+}
+
+/* 分析按钮 */
+.analysis-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2ecc71;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 下载报告 */
+.download-section {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  background: #9b59b6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.download-button:hover {
+  background: #8e44ad;
+}
+
+.download-icon {
+  width: 24px;
+  height: 24px;
+  fill: white;
+  margin-right: 8px;
 }

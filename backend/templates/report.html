@@ -8,6 +8,15 @@
         .severity-high { border-color: #dc3545; }
         .severity-medium { border-color: #ffc107; }
         .filename { color: #6c757d; font-size: 0.9em; }
+        
+        /* 新增代码片段样式 */
+        .code-snippet {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -18,6 +27,10 @@
     <div class="vulnerability severity-{{ vuln.severity }}">
         <div class="filename">{{ vuln.filename }}:{{ vuln.line }}</div>
         <h3>{{ vuln.type }} ({{ vuln.severity|upper }})</h3>
+        
+        <!-- 新增代码片段显示 -->
+        <pre class="code-snippet"><code>{{ vuln.code_snippet }}</code></pre>
+        
         <p>{{ vuln.description }}</p>
         <div class="suggestion">
             <strong>修复建议：</strong>{{ vuln.suggestion }}

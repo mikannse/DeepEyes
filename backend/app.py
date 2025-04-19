@@ -125,7 +125,7 @@ def analyze_code():
 
         uploaded_files = [f for f in os.listdir(UPLOAD_FOLDER) 
                          if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))]
-        
+
         logger.debug(f"待分析的文件列表: {uploaded_files}")
 
         if not uploaded_files:
@@ -133,6 +133,18 @@ def analyze_code():
             return jsonify({"error": "请先上传文件"}), 400
 
         vulnerabilities = []
+        
+        # 预加载所有文件内容
+        file_lines = {}
+        for filename in uploaded_files:
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    file_lines[filename] = f.readlines()
+            except Exception as e:
+                logger.error(f"文件读取失败: {filename}")
+                file_lines[filename] = []
+
         for filename in uploaded_files:
             file_path = os.path.join(UPLOAD_FOLDER, filename)
             logger.debug(f"正在处理文件: {file_path}")
@@ -171,10 +183,29 @@ def analyze_code():
                     analysis_data = {"vulnerabilities": []}
 
                 vulnerabilities_list = analysis_data.get('vulnerabilities', [])
-                vulnerabilities.extend([
-                    {**vuln, "filename": filename} 
-                    for vuln in vulnerabilities_list
-                ])
+
+                # 附加代码段到漏洞数据
+                for vuln in vulnerabilities_list:
+                    line = vuln.get('line', 0)
+                    if isinstance(line, int) and line > 0:
+                        code_lines = file_lines.get(filename, [])
+                        if not code_lines:
+                            vuln['code_snippet'] = "文件内容为空"
+                            continue
+
+                        # 计算代码段范围（当前行的前两行和后两行）
+                        start_line = max(0, line - 3)  # 前两行：line-3到line-1（索引）
+                        end_line = min(line + 2, len(code_lines))  # 包含当前行和后两行
+
+                        # 提取代码段（索引范围：start_line到end_line）
+                        code_segment = code_lines[start_line:end_line]
+
+                        # 合并为字符串（保留换行符）
+                        vuln['code_snippet'] = '\n'.join(code_segment).strip()
+                    else:
+                        vuln['code_snippet'] = "无效行号"
+
+                vulnerabilities.extend([{**vuln, "filename": filename} for vuln in vulnerabilities_list])
 
             except (json.JSONDecodeError, KeyError) as e:
                 logger.error(f"响应解析失败: {str(e)}")
@@ -204,7 +235,6 @@ def analyze_code():
     except Exception as e:
         logger.error(f"分析过程失败: {str(e)}", exc_info=True)
         return jsonify({"error": "分析服务暂不可用"}), 500
-
 @app.route('/delete', methods=['POST'])
 def delete_file():
     data = request.get_json()
