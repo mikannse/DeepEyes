@@ -32,7 +32,6 @@ session_id = str(uuid.uuid4())
 UPLOAD_FOLDER = os.path.join(UPLOAD_BASE, session_id)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-
 # PDF 配置
 PDF_OPTIONS = {
     'encoding': 'UTF-8',
@@ -108,19 +107,27 @@ def upload_files():
         logger.error(f"文件上传失败: {str(e)}", exc_info=True)
         return jsonify({"error": "服务器内部错误"}), 500
 
+@app.route('/list_files', methods=['GET'])
+def list_files():
+    """返回当前上传目录中的文件列表"""
+    files = [
+        f for f in os.listdir(UPLOAD_FOLDER)
+        if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
+    ]
+    return jsonify({"files": files})
+
 @app.route('/analyze', methods=['POST'])
 def analyze_code():
     try:
         logger.info("收到分析请求")
         
-        # 记录上传目录路径（验证临时目录是否正确）
         logger.debug(f"当前上传目录: {UPLOAD_FOLDER}")
 
         uploaded_files = [f for f in os.listdir(UPLOAD_FOLDER) 
                          if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))]
         
-        logger.debug(f"待分析的文件列表: {uploaded_files}")  # 新增
-        
+        logger.debug(f"待分析的文件列表: {uploaded_files}")
+
         if not uploaded_files:
             logger.warning("没有可分析的文件")
             return jsonify({"error": "请先上传文件"}), 400
@@ -128,12 +135,12 @@ def analyze_code():
         vulnerabilities = []
         for filename in uploaded_files:
             file_path = os.path.join(UPLOAD_FOLDER, filename)
-            logger.debug(f"正在处理文件: {file_path}")  # 新增
+            logger.debug(f"正在处理文件: {file_path}")
             
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     code_content = f.read()
-                logger.debug(f"文件内容长度: {len(code_content)} 字节")  # 新增
+                logger.debug(f"文件内容长度: {len(code_content)} 字节")
             except UnicodeDecodeError:
                 logger.error(f"文件解码失败: {filename}")
                 continue
@@ -150,15 +157,18 @@ def analyze_code():
                 )
                 response.raise_for_status()
                 result = response.json()
-                logger.debug(f"API状态码: {response.status_code}")  # 新增
+                logger.debug(f"API状态码: {response.status_code}")
                 logger.debug(f"API原始响应: {json.dumps(result, ensure_ascii=False)}")
 
-                content = result['choices'][0]['message'].get('reasoning_content', '')
+                content = result['choices'][0]['message'].get('content', '')
                 if not content:
-                    logger.error("API 返回的 reasoning_content 字段为空")
+                    logger.error("API 返回的 content 字段为空")
                     continue
-                analysis_data = json.loads(content)
-                logger.debug(f"解析后的漏洞数据: {analysis_data}")  # 新增
+                try:
+                    analysis_data = json.loads(content)
+                except json.JSONDecodeError:
+                    logger.error("响应内容无法解析为JSON: %s", content)
+                    analysis_data = {"vulnerabilities": []}
 
                 vulnerabilities_list = analysis_data.get('vulnerabilities', [])
                 vulnerabilities.extend([
@@ -195,12 +205,33 @@ def analyze_code():
         logger.error(f"分析过程失败: {str(e)}", exc_info=True)
         return jsonify({"error": "分析服务暂不可用"}), 500
 
+@app.route('/delete', methods=['POST'])
+def delete_file():
+    data = request.get_json()
+    filename = data.get('filename')
+    
+    if not filename:
+        return jsonify({"error": "文件名缺失"}), 400
+
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    
+    if not os.path.exists(file_path):
+        return jsonify({"error": "文件不存在"}), 404
+
+    try:
+        os.remove(file_path)
+        logger.info(f"文件已删除: {filename}")
+        return jsonify({"status": "success"})
+    except Exception as e:
+        logger.error(f"删除失败: {str(e)}")
+        return jsonify({"error": "删除失败"}), 500
+
 @app.route('/report.pdf')
 def download_report():
     try:
         report_path = os.path.join(UPLOAD_FOLDER, 'security_report.pdf')
         if not os.path.exists(report_path):
-            logger.error(f"报告文件不存在: {report_path}")  # 新增详细路径
+            logger.error(f"报告文件不存在: {report_path}")
             return jsonify({"error": "报告尚未生成"}), 404
             
         return send_file(

@@ -1,32 +1,49 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
-  const [files, setFiles] = useState<File[]>([]); // 存储用户选择的文件
-  const [isUploaded, setIsUploaded] = useState(false); // 是否已上传文件
-  const [isAnalyzing, setIsAnalyzing] = useState(false); // 是否正在分析
-  const [reportUrl, setReportUrl] = useState<string | null>(null); // 报告下载链接
+  // 文件列表（来自后端）
+  const [files, setFiles] = useState<string[]>([]);
+  // 用户选择但未上传的文件列表
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploaded, setIsUploaded] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [reportUrl, setReportUrl] = useState<string | null>(null);
 
-  // 处理文件上传
-// 处理文件上传
+  useEffect(() => {
+    fetchFiles();
+  }, []);
+
+  const fetchFiles = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/list_files');
+      const data = await response.json();
+      if (response.ok) {
+        setFiles(data.files);
+        setIsUploaded(data.files.length > 0);
+      }
+    } catch (error) {
+      console.error('获取文件列表失败:', error);
+    }
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
-      const filesArray = Array.from(selectedFiles);
-      setFiles(filesArray);
+      setSelectedFiles(Array.from(selectedFiles));
       setIsUploaded(false); // 重置上传状态
     }
   };
 
-  // 调用 /upload 接口上传文件
   const uploadFiles = async () => {
-    if (files.length === 0) {
+    const filesToUpload = selectedFiles;
+    if (filesToUpload.length === 0) {
       alert("请先选择文件");
       return;
     }
 
     const formData = new FormData();
-    files.forEach((file) => {
+    filesToUpload.forEach((file) => {
       formData.append('codeFiles', file);
     });
 
@@ -43,15 +60,43 @@ function App() {
       const result = await response.json();
       console.log('文件上传成功:', result);
       alert("文件上传成功！");
-      setIsUploaded(true); // 仅在上传成功后点亮“开始分析”按钮
+
+      // 重置输入框和 selectedFiles
+      const fileInput = document.getElementById('fileInput') as HTMLInputElement | null;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      setSelectedFiles([]);
+
+      // 更新状态
+      setIsUploaded(true);
+      await fetchFiles();
     } catch (error) {
       console.error('文件上传失败:', error);
       alert("文件上传失败，请重试");
-      setIsUploaded(false); // 确保上传失败时不点亮按钮
+      setIsUploaded(false);
     }
   };
 
-  // 调用 /analyze 接口进行分析
+  const deleteFile = async (filename: string) => {
+    try {
+      const response = await fetch('http://localhost:5000/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename }),
+      });
+
+      if (response.ok) {
+        await fetchFiles();
+      } else {
+        console.error('文件删除失败');
+        alert("文件删除失败，请重试");
+      }
+    } catch (error) {
+      console.error('删除文件时发生错误:', error);
+    }
+  };
+
   const startAnalysis = async () => {
     setIsAnalyzing(true);
 
@@ -64,9 +109,8 @@ function App() {
         throw new Error('分析请求失败');
       }
 
-      const { report_path } = await response.json();
-      console.log('报告路径:', report_path);
-      setReportUrl(`http://localhost:5000${report_path}`); // 设置报告下载链接
+      const result = await response.json();
+      setReportUrl(`http://localhost:5000${result.report_path}`);
     } catch (error) {
       console.error('分析失败:', error);
       alert("分析失败，请检查后端服务");
@@ -83,20 +127,38 @@ function App() {
       <div>
         <input
           type="file"
+          id="fileInput"
           multiple
-          onChange={handleFileUpload}
           accept=".py,.js,.java,.c,.cpp,.go,.php"
+          onChange={handleFileUpload}
         />
-        <button onClick={uploadFiles} disabled={files.length === 0}>
+        <button
+          onClick={uploadFiles}
+          // 按钮启用条件：选中的文件存在 或 已上传的文件存在
+          disabled={selectedFiles.length === 0 && files.length === 0}
+        >
           上传
         </button>
+      </div>
+
+      {/* 文件列表 */}
+      <div>
+        <h2>已上传文件列表</h2>
+        <ul>
+          {files.map((file, index) => (
+            <li key={file}>
+              {file}
+              <button onClick={() => deleteFile(file)}>删除</button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* 开始分析 */}
       <div>
         <button
           onClick={startAnalysis}
-          disabled={!isUploaded || isAnalyzing} // 只有上传完成后才能点击
+          disabled={!isUploaded || isAnalyzing || files.length === 0}
         >
           {isAnalyzing ? '分析中...' : '开始分析'}
         </button>
