@@ -2,53 +2,97 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>安全审计报告</title>
+    <title>代码安全审计报告</title>
     <style>
-        .vulnerability { margin-bottom: 20px; padding: 10px; border-left: 3px solid #007bff; }
-        .severity-high { border-color: #dc3545; }
-        .severity-medium { border-color: #ffc107; }
-        .filename { color: #6c757d; font-size: 0.9em; }
-        
-        /* 原始代码片段样式 */
-        .code-snippet {
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
             background: #f8f9fa;
-            padding: 8px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .report-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+        }
+
+        .vulnerability {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e5e5e5;
+        }
+
+        .filename {
+            font-weight: bold;
+            color: #34495e;
             margin-bottom: 10px;
         }
 
-        /* 修复后代码样式 */
-        .fixed-code-snippet {
-            background: #e9f5db;
-            padding: 8px;
+        .code-block {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
             border-radius: 4px;
+        }
+
+        .code-line {
             font-family: 'Courier New', monospace;
-            margin-bottom: 10px;
-            border: 1px solid #c3e683;
-            white-space: pre-wrap; /* 保留代码格式 */
+            color: #333;
+        }
+
+        .severity-badge {
+            background: #3498db;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        .error {
+            background: #fff5f5;
+            border: 1px solid #e74c3c;
         }
     </style>
 </head>
 <body>
-    <h1>代码安全审计报告</h1>
-    <p>共发现 {{ vulnerabilities|length }} 个安全问题</p>
-    
-    {% for vuln in vulnerabilities %}
-    <div class="vulnerability severity-{{ vuln.severity }}">
-        <div class="filename">{{ vuln.filename }}:{{ vuln.line }}</div>
-        <h3>{{ vuln.type }} ({{ vuln.severity|upper }})</h3>
+    <div class="report-container">
+        <h1>代码安全审计报告</h1>
+        <p>共发现 <strong>{{ vulnerabilities|length }}</strong> 个安全问题</p>
         
-        <!-- 原始代码片段 -->
-        <pre class="code-snippet"><code>{{ vuln.code_snippet }}</code></pre>
+        {% for vuln in vulnerabilities %}
+            <div class="vulnerability">
+                <div class="header">
+                    <span class="filename">{{ vuln.filename }}:{{ vuln.line_number }}行</span>
+                    <span class="severity-badge">{{ vuln.severity|upper }}</span>
+                </div>
+                <h3>{{ vuln.type }}</h3>
+                
+                <div class="description">
+                    <strong>风险描述：</strong>{{ vuln.description }}
+                </div>
 
-        <div class="suggestion">
-            <strong>修复建议：</strong>{{ vuln.suggestion }}
-        </div>
+                <!-- AI返回的漏洞代码 -->
+                <div class="code-block">
+                    <span class="code-line">{{ vuln.reported_line }}</span>
+                </div>
 
-        <!-- 修复后代码片段 -->
-        <pre class="fixed-code-snippet"><code>{{ vuln.fixed_code }}</code></pre>
+                <div class="suggestion">
+                    <strong>修复建议：</strong>{{ vuln.suggestion }}
+                </div>
+
+                <!-- 修复后的代码 -->
+                <div class="code-block">
+                    <span class="code-line">{{ vuln.fixed_code }}</span>
+                </div>
+            </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 </body>
 </html>

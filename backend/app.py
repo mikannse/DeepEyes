@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import os
+import re
+import difflib
 import tempfile
 import pdfkit
 import json
@@ -42,16 +44,24 @@ PDF_OPTIONS = {
 }
 
 def build_analysis_prompt(filename: str, code: str) -> dict:
-    """构建API请求提示词"""
     return {
         "model": "deepseek-ai/DeepSeek-R1",
         "messages": [
             {
                 "role": "user",
-                "content": f"""请以专业安全工程师身份分析以下代码，输出中文报告，严格按JSON格式返回：
+                "content": f"""
+请以专业安全工程师身份分析以下代码，输出中文报告：
+1. 严格返回JSON格式：
 {{
   "vulnerabilities": [
-    {{"type": "漏洞类型", "severity": "high/medium/low", "line": 行号, "description": "风险描述", "suggestion": "修复建议", "fixed_code": "修复后的代码示例"}}
+    {{
+        "type": "漏洞类型",
+        "severity": "high/medium/low",
+        "vulnerable_line": "存在漏洞的完整代码行（单行）",
+        "description": "风险描述",
+        "suggestion": "修复建议",
+        "fixed_code": "修复后的代码示例（支持多行代码块）"
+    }}
   ]
 }}
 
@@ -64,10 +74,22 @@ def build_analysis_prompt(filename: str, code: str) -> dict:
         "max_tokens": 1024,
         "response_format": {"type": "json_object"}
     }
+def find_code_lines(file_lines: list, vulnerable_line: str) -> int:
+    """仅返回行号"""
+    target = vulnerable_line.strip()
+    threshold = 0.75
+    
+    for i, line in enumerate(file_lines, 1):
+        line_content = line.strip()
+        similarity = difflib.SequenceMatcher(None, line_content, target).ratio()
+        
+        if similarity >= threshold:
+            return i
+    
+    return 0
 
 @app.route('/upload', methods=['POST'])
 def upload_files():
-    """文件上传端点"""
     try:
         logger.info("收到文件上传请求")
         
@@ -96,7 +118,6 @@ def upload_files():
 
 @app.route('/list_files', methods=['GET'])
 def list_files():
-    """返回当前上传目录中的文件列表"""
     files = [
         f for f in os.listdir(UPLOAD_FOLDER)
         if os.path.isfile(os.path.join(UPLOAD_FOLDER, f))
@@ -153,20 +174,38 @@ def analyze_code():
                     logger.error("API 返回的 content 字段为空")
                     continue
 
-                analysis_data = json.loads(content)
-                vulnerabilities_list = analysis_data.get('vulnerabilities', [])
+                # JSON解析保护
+                try:
+                    analysis_data = json.loads(content)
+                    vulnerabilities_list = analysis_data.get('vulnerabilities', [])
+                    
+                    if not isinstance(vulnerabilities_list, list):
+                        logger.error("API返回的漏洞列表格式错误")
+                        vulnerabilities_list = []
+                except json.JSONDecodeError as e:
+                    logger.error(f"JSON解析失败: {str(e)}")
+                    vulnerabilities_list = []
 
-                # 处理每个漏洞
                 for vuln in vulnerabilities_list:
-                    line = vuln.get('line', 0)
-                    if not isinstance(line, int) or line <= 0:
-                        vuln['code_snippet'] = "无效行号"
-                    else:
-                        code_segment = file_lines[filename][max(0, line-3):min(line+2, len(file_lines[filename]))]
-                        vuln['code_snippet'] = '\n'.join(code_segment).strip()
-
-                    # 确保包含修复代码字段
-                    vuln['fixed_code'] = vuln.get('fixed_code', '修复建议待补充')
+                    vulnerable_line = vuln.get('vulnerable_line', '')
+                    if not vulnerable_line:
+                        continue
+                    
+                    line_number = find_code_lines(file_lines[filename], vulnerable_line)
+                    
+                    # 处理fixed_code类型
+                    fixed_code = vuln.get('fixed_code', '修复建议待补充')
+                    if isinstance(fixed_code, list):
+                        fixed_code = '\n'.join(fixed_code)
+                    elif not isinstance(fixed_code, str):
+                        fixed_code = str(fixed_code)
+                    
+                    vuln['line_number'] = line_number
+                    vuln['reported_line'] = vulnerable_line
+                    vuln['fixed_code'] = fixed_code.strip()  # 确保是字符串后处理
+                    
+                    if line_number == 0:
+                        logger.warning(f"未匹配到漏洞代码：{vulnerable_line}")
 
                 vulnerabilities.extend([{**vuln, "filename": filename} for vuln in vulnerabilities_list])
 
@@ -190,6 +229,7 @@ def analyze_code():
     except Exception as e:
         logger.error(f"分析失败: {str(e)}", exc_info=True)
         return jsonify({"error": "分析服务暂不可用"}), 500
+
 @app.route('/delete', methods=['POST'])
 def delete_file():
     data = request.get_json()
